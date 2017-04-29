@@ -42,6 +42,7 @@ int builtin_cmd(char **argv);
 void do_bgfg(char **argv);
 void waitfg(pid_t pid);
 
+
 void sigchld_handler(int sig);
 void sigtstp_handler(int sig);
 void sigint_handler(int sig);
@@ -347,6 +348,14 @@ void sigchld_handler(int sig)
 //
 void sigint_handler(int sig) 
 {
+  //Get the foreground job group to killlllllllllll
+  pid_t gpid = -fgpid(jobs);
+  
+  //Kill group with SIGINT
+  kill(gpid, sig);
+  
+  //Output string formatted
+  printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(gpid)+1, -gpid);
   return;
 }
 
