@@ -2,6 +2,7 @@
 // tsh - A tiny shell program with job control
 // 
 // <Jillian Kirchner jiki1738>
+// <Alex Urbanski alur4257>
 //
 
 using namespace std;
