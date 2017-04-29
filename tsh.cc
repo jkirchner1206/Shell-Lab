@@ -288,7 +288,7 @@ void waitfg(pid_t pid)
 {
 	while (pid == fgpid(jobs)){
 		sleep(2);
-		printf("inside while");
+		//printf("inside while");
 	}
 	return;
 }
@@ -333,7 +333,7 @@ void sigchld_handler(int sig)
     pid_t pid;
 
   while ((pid = waitpid(-1, &status, WNOHANG )) > 0 ) {
-	printf("reaping");
+	//printf("reaping");
 	deletejob(jobs,pid);
 }
     return;
