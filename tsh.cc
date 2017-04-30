@@ -159,6 +159,7 @@ void eval(char *cmdline)
   //
 	char *argv[MAXARGS];
 	pid_t pid;
+	sigset_t childmask, prev;
   //
   // The 'bg' variable is TRUE (1) if the job should run
   // in background mode or FALSE (0) if it should run in FG
@@ -168,6 +169,8 @@ void eval(char *cmdline)
     return;   /* ignore empty lines */
     
 	if (!builtin_cmd(argv)){	/* not built */
+		sigaddset(&childmask, SIGCHLD);
+		sigprocmask(SIG_SETMASK, &childmask, &prev);
 		if ((pid = fork()) == 0){
 			setpgid(0,0);
 			if (execve(argv[0], argv, environ) < 0){
@@ -179,13 +182,16 @@ void eval(char *cmdline)
 		if (!bg){ // fg, add to jobs list
 			int status;
 			addjob(jobs, pid, FG, cmdline);
+			sigprocmask(SIG_SETMASK, &prev, NULL);
 			waitfg(pid);
 		}
 		else{
 			printf("[%d] (%d) %s", pid2jid(pid)+1, pid, cmdline);		// probably should be JID, not command line arg
 			addjob(jobs, pid, BG, cmdline); // bg, add to jobs list
+			sigprocmask(SIG_SETMASK, &prev, NULL);
 		}
 	}
+	
 	return;
 }
 
@@ -333,10 +339,18 @@ void sigchld_handler(int sig)
 {
     int status;
     pid_t pid;
+    job_t *jobid = getjobpid(jobs, pid);
 
-  while ((pid = waitpid(-1, &status, WNOHANG )) > 0 ) {
+  while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0 ) {
 	//printf("reaping");
-	deletejob(jobs,pid);
+	printf("Will this work?");
+	if(WIFSTOPPED(status)){
+	  printf("Stopped");
+	  jobid->state = ST;
+	}else if (WIFEXITED(status)){
+	  deletejob(jobs,pid);
+	  printf("Exited");
+    }
 }
     return;
 }
@@ -357,6 +371,7 @@ void sigint_handler(int sig)
   
   //Output string formatted
   printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(gpid)+1, -gpid);
+  
   return;
 }
 
@@ -368,6 +383,17 @@ void sigint_handler(int sig)
 //
 void sigtstp_handler(int sig) 
 {
+  //Get the foreground job group
+  pid_t gpid = -fgpid(jobs);
+  
+  //Kill group with SIGINT
+  
+  kill(gpid, SIGTSTP);
+  
+  
+  //Output string formatted
+  printf("Job [%d] (%d) stopped by signal 20\n", pid2jid(gpid)+1, -gpid);
+  
   return;
 }
 
