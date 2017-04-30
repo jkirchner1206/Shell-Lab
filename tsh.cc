@@ -170,7 +170,7 @@ void eval(char *cmdline)
     
 	if (!builtin_cmd(argv)){	/* not built */
 		sigaddset(&childmask, SIGCHLD);
-		sigaddset(&childmask, SIGTSTP);
+		//sigaddset(&childmask, SIGTSTP);
 		sigprocmask(SIG_SETMASK, &childmask, &prev);
 		if ((pid = fork()) == 0){
 			setpgid(0,0);
@@ -187,8 +187,8 @@ void eval(char *cmdline)
 			waitfg(pid);
 		}
 		else{
-			printf("[%d] (%d) %s", pid2jid(pid)+1, pid, cmdline);		// probably should be JID, not command line arg
 			addjob(jobs, pid, BG, cmdline); // bg, add to jobs list
+			printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
 			sigprocmask(SIG_SETMASK, &prev, NULL);
 		}
 	}
@@ -279,7 +279,15 @@ void do_bgfg(char **argv)
   string cmd(argv[0]);
   
 	if (cmd == "fg"){
+		jobp->state = FG;
+		kill(-(jobp->pid), SIGCONT);
 		waitfg(jobp->pid);
+	}
+	
+	else if (cmd == "bg"){
+		jobp->state = BG;
+		kill(-(jobp->pid), SIGCONT);
+		printf("[%d] (%d) %s", jobp->jid, jobp->pid, jobp->cmdline);
 	}
 	  
   
@@ -335,7 +343,19 @@ void sigchld_handler(int sig)
 	
 	return;
 }*/
+/*
+void sigchld_handler(int sig) 
+{
+    int status;
+    pid_t pid;
 
+  while ((pid = waitpid(-1, &status, WNOHANG )) > 0 ) {
+	printf("reaping");
+	deletejob(jobs,pid);
+}
+    return;
+}
+*/
 void sigchld_handler(int sig) 
 {
     int status;
@@ -346,15 +366,14 @@ void sigchld_handler(int sig)
 	//printf("reaping");
 	//printf("Will this work?");
 	if(WIFSTOPPED(status)){
-	  printf("Stopped");
 	  jobid = getjobpid(jobs, pid);
 	  jobid->state = ST;
+	  printf("Job [%d] (%d) stopped by signal 20\n", pid2jid(pid), pid);
 	}else if(WIFEXITED(status)){
-	  deletejob(jobs,pid);
-	  
+	  deletejob(jobs,pid);	  
     }else if(WIFSIGNALED(status)){
+	  printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(pid), pid);
 	  deletejob(jobs,pid);
-	  printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(pid)+1, pid);
 	}
 }
     return;
@@ -391,13 +410,12 @@ void sigtstp_handler(int sig)
   //Get the foreground job group
   pid_t gpid = -fgpid(jobs);
   
-  //Kill group with SIGINT
-  
+  //Kill group with SIGINT 
   kill(gpid, sig);
   
   
   //Output string formatted
-  printf("Job [%d] (%d) stopped by signal 20\n", pid2jid(gpid)+1, -gpid);
+  //printf("Job [%d] (%d) stopped by signal 20\n", pid2jid(gpid)+1, -gpid);
   
   return;
 }
