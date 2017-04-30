@@ -170,6 +170,7 @@ void eval(char *cmdline)
     
 	if (!builtin_cmd(argv)){	/* not built */
 		sigaddset(&childmask, SIGCHLD);
+		sigaddset(&childmask, SIGTSTP);
 		sigprocmask(SIG_SETMASK, &childmask, &prev);
 		if ((pid = fork()) == 0){
 			setpgid(0,0);
@@ -343,14 +344,17 @@ void sigchld_handler(int sig)
 
   while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0 ) {
 	//printf("reaping");
-	printf("Will this work?");
+	//printf("Will this work?");
 	if(WIFSTOPPED(status)){
 	  printf("Stopped");
 	  jobid->state = ST;
-	}else if (WIFEXITED(status)){
+	}else if(WIFEXITED(status)){
 	  deletejob(jobs,pid);
-	  printf("Exited");
-    }
+	  
+    }else if(WIFSIGNALED(status)){
+	  deletejob(jobs,pid);
+	  printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(pid)+1, pid);
+	}
 }
     return;
 }
@@ -370,7 +374,7 @@ void sigint_handler(int sig)
   kill(gpid, sig);
   
   //Output string formatted
-  printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(gpid)+1, -gpid);
+  //printf("Job [%d] (%d) terminated by signal 2\n", pid2jid(gpid)+1, -gpid);
   
   return;
 }
@@ -388,7 +392,7 @@ void sigtstp_handler(int sig)
   
   //Kill group with SIGINT
   
-  kill(gpid, SIGTSTP);
+  kill(gpid, sig);
   
   
   //Output string formatted
