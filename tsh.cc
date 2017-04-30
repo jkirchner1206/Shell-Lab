@@ -296,7 +296,7 @@ void do_bgfg(char **argv)
 void waitfg(pid_t pid)
 {
 	while (pid == fgpid(jobs)){
-		sleep(2);
+		sleep(0);
 		//printf("inside while");
 	}
 	return;
@@ -340,13 +340,14 @@ void sigchld_handler(int sig)
 {
     int status;
     pid_t pid;
-    job_t *jobid = getjobpid(jobs, pid);
+    job_t *jobid;
 
   while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0 ) {
 	//printf("reaping");
 	//printf("Will this work?");
 	if(WIFSTOPPED(status)){
 	  printf("Stopped");
+	  jobid = getjobpid(jobs, pid);
 	  jobid->state = ST;
 	}else if(WIFEXITED(status)){
 	  deletejob(jobs,pid);
